@@ -1,6 +1,6 @@
-const API_URL = "http://localhost:5000/api/topics";
+const API_URL = "https://chronos-history-app.onrender.com/api/topics";
 
-// 1. Ambil semua topik dari database
+// 1. Ambil semua topik
 export const getTopics = async () => {
   try {
     const res = await fetch(API_URL);
@@ -22,7 +22,7 @@ export const getTopicById = async (id) => {
   }
 };
 
-// 3. Simpan / Kemaskini topik ke database
+// 3. Simpan / Kemaskini topik
 export const saveTopic = async (topic) => {
   try {
     const isEdit = Boolean(topic.id);
@@ -40,7 +40,7 @@ export const saveTopic = async (topic) => {
   }
 };
 
-// 4. Padam topik dari database
+// 4. Padam topik
 export const deleteTopic = async (id) => {
   try {
     const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
@@ -49,11 +49,13 @@ export const deleteTopic = async (id) => {
     console.error("Error deleting topic:", err);
   }
 };
+
+// 5. Upload Gambar ke Render Backend
 export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append("image", file);
 
-  const res = await fetch("http://localhost:5000/api/upload", {
+  const res = await fetch("https://chronos-history-app.onrender.com/api/upload", {
     method: "POST",
     body: formData,
   });
