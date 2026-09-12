@@ -1,10 +1,15 @@
 const API_URL = "https://chronos-history-app.onrender.com/api/topics";
 
-// 1. Ambil semua topik
+// 1. Ambil semua topik (Disetkan supaya tidak meletupkan React UI jika API error)
 export const getTopics = async () => {
   try {
     const res = await fetch(API_URL);
-    return await res.json();
+    if (!res.ok) {
+      console.error("Server error:", res.statusText);
+      return [];
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error("Error fetching topics:", err);
     return [];
@@ -15,6 +20,7 @@ export const getTopics = async () => {
 export const getTopicById = async (id) => {
   try {
     const res = await fetch(`${API_URL}/${id}`);
+    if (!res.ok) return null;
     return await res.json();
   } catch (err) {
     console.error("Error fetching topic:", err);
@@ -34,9 +40,11 @@ export const saveTopic = async (topic) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(topic),
     });
+    if (!res.ok) throw new Error("Gagal menyimpan topik");
     return await res.json();
   } catch (err) {
     console.error("Error saving topic:", err);
+    return null;
   }
 };
 
@@ -44,21 +52,29 @@ export const saveTopic = async (topic) => {
 export const deleteTopic = async (id) => {
   try {
     const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Gagal memadam topik");
     return await res.json();
   } catch (err) {
     console.error("Error deleting topic:", err);
+    return null;
   }
 };
 
 // 5. Upload Gambar ke Render Backend
 export const uploadImage = async (file) => {
-  const formData = new FormData();
-  formData.append("image", file);
+  try {
+    const formData = new FormData();
+    formData.append("image", file);
 
-  const res = await fetch("https://chronos-history-app.onrender.com/api/upload", {
-    method: "POST",
-    body: formData,
-  });
-  const data = await res.json();
-  return data.imageUrl;
+    const res = await fetch("https://chronos-history-app.onrender.com/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) throw new Error("Gagal memuat naik gambar");
+    const data = await res.json();
+    return data.imageUrl;
+  } catch (err) {
+    console.error("Error uploading image:", err);
+    return null;
+  }
 };

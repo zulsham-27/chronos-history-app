@@ -1,89 +1,93 @@
 const express = require("express");
+const mysql = require("mysql2");
 const cors = require("cors");
 const path = require("path");
-const multer = require("multer");
-require("dotenv").config();
-const db = require("./config/db");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Bolehkan folder 'uploads' diakses melalui URL
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Konfigurasi Multer untuk Simpan Gambar
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-const upload = multer({ storage });
-
-// API UPLOAD GAMBAR
-app.post("/api/upload", upload.single("image"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "Tiada fail diupload" });
-  const imageUrl = `http://localhost:5000/uploads/${req.file.filename}`;
-  res.json({ imageUrl });
-});
-
-// API TOPICS (Kekal macam biasa)
-app.get("/api/topics", async (req, res) => {
-  try {
-    const [rows] = await db.query("SELECT * FROM topics ORDER BY id DESC");
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+// Sambungan MySQL dengan SSL (Diwajibkan oleh Aiven)
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  ssl: {
+    rejectUnauthorized: false
   }
 });
 
-app.get("/api/topics/:id", async (req, res) => {
-  try {
-    const [rows] = await db.query("SELECT * FROM topics WHERE id = ?", [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ message: "Not found" });
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+db.connect((err) => {
+  if (err) {
+    console.error("Database connection error:", err);
+    return;
   }
+  console.log("Connected to Aiven MySQL!");
+
+  // Automatik cipta jadual jika belum wujud
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS topics (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      period VARCHAR(100),
+      region VARCHAR(100),
+      short_description TEXT,
+      content TEXT,
+      image VARCHAR(500),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
+  db.query(createTableQuery, (err) => {
+    if (err) console.error("Error creating table:", err);
+    else console.log("Table 'topics' is ready!");
+  });
 });
 
-app.post("/api/topics", async (req, res) => {
-  const { title, period, region, shortDescription, content, image } = req.body;
-  try {
-    const [result] = await db.query(
-      "INSERT INTO topics (title, period, region, short_description, content, image) VALUES (?, ?, ?, ?, ?, ?)",
-      [title, period, region, shortDescription, content, image]
-    );
+// API Routes
+app.get("/api/topics", (req, res) => {
+  db.query("SELECT * FROM topics ORDER BY created_at DESC", (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+app.get("/api/topics/:id", (req, res) => {
+  db.query("SELECT * FROM topics WHERE id = ?", [req.params.id], (err, results) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (results.length === 0) return res.status(404).json({ message: "Topic not found" });
+    res.json(results[0]);
+  });
+});
+
+app.post("/api/topics", (req, res) => {
+  const { title, period, region, short_description, content, image } = req.body;
+  const sql = "INSERT INTO topics (title, period, region, short_description, content, image) VALUES (?, ?, ?, ?, ?, ?)";
+  db.query(sql, [title, period, region, short_description, content, image], (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
     res.json({ id: result.insertId, ...req.body });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  });
 });
 
-app.put("/api/topics/:id", async (req, res) => {
-  const { title, period, region, shortDescription, content, image } = req.body;
-  try {
-    await db.query(
-      "UPDATE topics SET title=?, period=?, region=?, short_description=?, content=?, image=? WHERE id=?",
-      [title, period, region, shortDescription, content, image, req.params.id]
-    );
-    res.json({ message: "Updated successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.put("/api/topics/:id", (req, res) => {
+  const { title, period, region, short_description, content, image } = req.body;
+  const sql = "UPDATE topics SET title=?, period=?, region=?, short_description=?, content=?, image=? WHERE id=?";
+  db.query(sql, [title, period, region, short_description, content, image, req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ id: req.params.id, ...req.body });
+  });
 });
 
-app.delete("/api/topics/:id", async (req, res) => {
-  try {
-    await db.query("DELETE FROM topics WHERE id = ?", [req.params.id]);
-    res.json({ message: "Deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.delete("/api/topics/:id", (req, res) => {
+  db.query("DELETE FROM topics WHERE id = ?", [req.params.id], (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: "Topic deleted successfully" });
+  });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server Chronos running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
