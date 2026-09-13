@@ -1,12 +1,7 @@
-import React, { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from "react-router-dom";
-import Home from "./pages/Home";
-import TopicDetail from "./pages/TopicDetail";
-import Admin from "./pages/Admin";
-import Login from "./pages/Login";
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-// Komponen Navigation Bar (Bahasa Melayu & Al-Tarikh)
-function Navbar({ isAdmin, setIsAdmin }) {
+export default function Navbar({ isAdmin, setIsAdmin }) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -17,7 +12,7 @@ function Navbar({ isAdmin, setIsAdmin }) {
   return (
     <nav className="bg-slate-900 text-slate-100 border-b border-slate-800 sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-        {/* Tajuk Laman Web */}
+        {/* Penjenamaan Utama */}
         <Link to="/" className="flex items-center gap-2 group">
           <span className="text-2xl font-serif font-bold tracking-wider text-amber-500 group-hover:text-amber-400 transition">
             AL-TARIKH
@@ -56,27 +51,5 @@ function Navbar({ isAdmin, setIsAdmin }) {
         </div>
       </div>
     </nav>
-  );
-}
-
-// App Utama
-export default function App() {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  return (
-    <Router>
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-        {/* Navbar diletakkan di sini supaya sentiasa muncul di bahagian atas */}
-        <Navbar isAdmin={isAdmin} setIsAdmin={setIsAdmin} />
-
-        {/* Laluan Halaman (Routes) */}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/topic/:id" element={<TopicDetail />} />
-          <Route path="/admin" element={<Admin isAdmin={isAdmin} />} />
-          <Route path="/login" element={<Login setIsAdmin={setIsAdmin} />} />
-        </Routes>
-      </div>
-    </Router>
   );
 }
