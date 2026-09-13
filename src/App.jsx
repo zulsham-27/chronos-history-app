@@ -75,7 +75,7 @@ function HomePage() {
       <header className="relative border-b border-slate-800/60 bg-gradient-to-b from-slate-900/60 to-slate-950 py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 text-xs font-mono font-medium tracking-wide text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full">
-            Gerbang Arkib Sejarah Dunia
+            QAIM FAIZ ARRIDHA BEKAS PELAJAR PROF SOLEHAH
           </span>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-slate-50 mb-4">AL-TARIKH</h1>
           <p className="text-base md:text-lg text-slate-400 max-w-2xl mx-auto mb-8 font-serif italic leading-relaxed">
