@@ -6,11 +6,11 @@ const path = require("path");
 const app = express();
 app.use(cors());
 
-// [Dikemas Kini] Naikkan had saiz payload kepada 10mb untuk terima gambar Base64
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Had saiz payload 50mb untuk mengendalikan gambar Base64
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Sambungan MySQL dengan SSL (Diwajibkan oleh Aiven)
+// Sambungan MySQL dengan SSL (Aiven)
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
@@ -29,33 +29,32 @@ db.connect((err) => {
   }
   console.log("Connected to Aiven MySQL!");
 
-  // [PENTING] Naikkan had saiz max_allowed_packet dalam pangkalan data MySQL
-  db.query("SET GLOBAL max_allowed_packet = 67108864", (err) => {
-    if (err) console.log("Note: Could not set global max_allowed_packet (normal for restricted users)");
-  });
+  // Langkah 1: Padam jadual lama yang ada masalah struktur (Hanya sekali sahaja)
+  db.query("DROP TABLE IF EXISTS topics", (dropErr) => {
+    if (dropErr) console.log("Drop table error:", dropErr.message);
 
-  const createTableQuery = `
-    CREATE TABLE IF NOT EXISTS topics (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      period VARCHAR(100),
-      region VARCHAR(100),
-      short_description TEXT,
-      content TEXT,
-      image LONGTEXT, 
-      source TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
+    // Langkah 2: Bina jadual baharu dengan jenis LONGTEXT yang betul
+    const createTableQuery = `
+      CREATE TABLE topics (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        period VARCHAR(100),
+        region VARCHAR(100),
+        short_description TEXT,
+        content TEXT,
+        image LONGTEXT, 
+        source TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
 
-  db.query(createTableQuery, (err) => {
-    if (err) {
-      console.error("Error creating table:", err);
-    } else {
-      console.log("Table 'topics' is ready!");
-      db.query("ALTER TABLE topics ADD COLUMN IF NOT EXISTS source TEXT", () => {});
-      db.query("ALTER TABLE topics MODIFY COLUMN image LONGTEXT", () => {});
-    }
+    db.query(createTableQuery, (err) => {
+      if (err) {
+        console.error("Error creating table:", err);
+      } else {
+        console.log("Jadual 'topics' yang baharu & bersih sedia digunakan!");
+      }
+    });
   });
 });
 
@@ -75,41 +74,28 @@ app.get("/api/topics/:id", (req, res) => {
   });
 });
 
-// [Dikemas Kini] Terima parameter 'source' untuk pendaftaran baru
 app.post("/api/topics", (req, res) => {
   const { title, period, region, short_description, content, image, source } = req.body;
+  const sql = "INSERT INTO topics (title, period, region, short_description, content, image, source) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-  // 1. Paksa tukar struktur kolum image & source dulu jika belum LONGTEXT
-  const alterQuery = `
-    ALTER TABLE topics 
-    MODIFY COLUMN image LONGTEXT,
-    ADD COLUMN IF NOT EXISTS source TEXT;
-  `;
-
-  db.query(alterQuery, (alterErr) => {
-    if (alterErr) {
-      console.log("Nota Alter (abaikan jika sudah wujud):", alterErr.message);
+  db.query(sql, [title, period, region, short_description, content, image, source], (err, result) => {
+    if (err) {
+      console.error("MYSQL INSERT ERROR:", err);
+      return res.status(500).json({ error: err.message });
     }
-
-    // 2. Masukkan data baharu
-    const sql = "INSERT INTO topics (title, period, region, short_description, content, image, source) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.query(sql, [title, period, region, short_description, content, image, source], (err, result) => {
-      if (err) {
-        console.error("MYSQL INSERT ERROR:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ id: result.insertId, ...req.body });
-    });
+    res.json({ id: result.insertId, ...req.body });
   });
 });
 
-// [Dikemas Kini] Terima parameter 'source' semasa menyunting
 app.put("/api/topics/:id", (req, res) => {
   const { title, period, region, short_description, content, image, source } = req.body;
   const sql = "UPDATE topics SET title=?, period=?, region=?, short_description=?, content=?, image=?, source=? WHERE id=?";
-  
+
   db.query(sql, [title, period, region, short_description, content, image, source, req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error("MYSQL UPDATE ERROR:", err);
+      return res.status(500).json({ error: err.message });
+    }
     res.json({ id: req.params.id, ...req.body });
   });
 });
