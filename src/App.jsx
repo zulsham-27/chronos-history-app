@@ -23,7 +23,7 @@ function Navbar({ isAdmin, setIsAdmin }) {
               AL-TARIKH
             </span>
             <span className="text-[10px] uppercase font-mono tracking-widest text-slate-400">
-              Arkib Sejarah
+              Sejarah Dunia
             </span>
           </div>
         </Link>
