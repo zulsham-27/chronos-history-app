@@ -357,4 +357,184 @@ function AdminPage({ isAdmin }) {
         });
         notify("success", "Peristiwa berjaya ditambah.");
       }
-      setForm(
+      setForm(emptyForm);
+      fetchTopics();
+    } catch (err) {
+      notify("error", "Operasi gagal. Semak saiz gambar atau pelayan.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (item) => {
+    const itemId = item.id || item._id;
+    setEditingId(itemId);
+    setForm({
+      title: item.title || "",
+      period: item.period || "",
+      region: item.region || "",
+      short_description: item.short_description || "",
+      content: item.content || "",
+      image: item.image || "",
+      source: item.source || "",
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Pasti mahu memadam rekod ini?")) return;
+    setDeletingId(id);
+    try {
+      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      notify("success", "Rekod berjaya dipadam.");
+      if (editingId === id) handleCancelEdit();
+      fetchTopics();
+    } catch (err) {
+      notify("error", "Gagal memadam rekod.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+      <div className="border-b border-slate-800/60 bg-gradient-to-b from-slate-900/60 to-slate-950">
+        <div className="max-w-6xl mx-auto px-6 pt-10 pb-8">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 mb-3 text-xs font-mono font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-full">Ruang Pentadbir</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-100 mb-1.5">Panel Pengurusan</h1>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-8 max-w-xl">
+            <StatCard label="Jumlah Rekod" value={topics.length} accent="text-amber-400" />
+            <StatCard label="Dipaparkan" value={filteredTopics.length} />
+            <StatCard label="Status" value={editingId ? "Menyunting" : "Sedia"} accent={editingId ? "text-amber-400" : "text-emerald-400"} />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        <form onSubmit={handleSubmit} className="lg:col-span-2 lg:sticky lg:top-24 space-y-5 bg-slate-900/80 p-6 rounded-xl border border-slate-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-100">{editingId ? "Kemaskini Peristiwa" : "Tambah Peristiwa Baru"}</h2>
+            </div>
+            {editingId && <button type="button" onClick={handleCancelEdit} className="text-xs text-slate-400 underline">Batal</button>}
+          </div>
+          <div className="h-px bg-slate-800" />
+          
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Tajuk Peristiwa *</label>
+            <input placeholder="cth: Kejatuhan Kesultanan Melaka" className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 text-sm" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Zaman</label>
+              <input className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 text-sm" value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Wilayah / Negara</label>
+              <input className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 text-sm" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Muat Naik Gambar (Dari Komputer)</label>
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleImageUpload}
+              className="w-full px-2 py-2 text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500/10 file:text-amber-400 hover:file:bg-amber-500/20 cursor-pointer"
+            />
+            {form.image && (
+              <div className="mt-2.5 h-28 rounded-lg overflow-hidden border border-slate-800 bg-slate-950 relative group">
+                <img src={form.image} alt="Pratonton" className="w-full h-full object-cover" />
+                <button type="button" onClick={() => setForm({...form, image: ""})} className="absolute top-2 right-2 bg-slate-900/80 text-rose-400 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-xs">Buang</button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Sumber Sejarah / Rujukan (Pilihan)</label>
+            <input 
+              placeholder="cth: https://ms.wikipedia.org/wiki/... atau Tajuk Buku" 
+              className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 placeholder-slate-600 focus:border-amber-500/50 text-sm" 
+              value={form.source} 
+              onChange={(e) => setForm({ ...form, source: e.target.value })} 
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Ringkasan Ringkas</label>
+            <textarea className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 text-sm h-20 resize-none" value={form.short_description} onChange={(e) => setForm({ ...form, short_description: e.target.value })} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Kandungan Ulasan Sejarah *</label>
+            <textarea className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-100 text-sm h-40 resize-none" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} required />
+          </div>
+
+          <button type="submit" disabled={!isFormValid || saving} className="w-full py-3 bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 font-semibold rounded-lg text-slate-950 text-sm transition">
+            {saving ? "Menyimpan..." : editingId ? "Kemaskini Rekod" : "Simpan Rekod Baharu"}
+          </button>
+        </form>
+
+        <div className="lg:col-span-3 bg-slate-900/80 p-6 rounded-xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <h2 className="text-base font-bold text-slate-100">Senarai Rekod ({filteredTopics.length})</h2>
+            <input type="text" placeholder="Cari dalam senarai..." value={adminSearch} onChange={(e) => setAdminSearch(e.target.value)} className="w-full sm:w-56 px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-100 text-xs" />
+          </div>
+
+          {loading ? (
+            <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-lg bg-slate-800/40 animate-pulse" />)}</div>
+          ) : filteredTopics.length === 0 ? (
+            <div className="text-center py-12"><p className="text-slate-500 text-sm italic">Tiada rekod.</p></div>
+          ) : (
+            <div className="space-y-2.5 max-h-[720px] overflow-y-auto pr-1">
+              {filteredTopics.map((item) => {
+                const itemId = item.id || item._id;
+                return (
+                  <div key={itemId} className={`flex items-center justify-between gap-4 p-4 bg-slate-950 border rounded-lg ${editingId === itemId ? "border-amber-500/50" : "border-slate-800/80"}`}>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-slate-100 text-sm truncate">{item.title}</h3>
+                      <div className="text-xs text-slate-400 flex flex-wrap gap-x-2 mt-1">
+                        {item.period && <span>{item.period}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => handleEdit(item)} className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold">Sunting</button>
+                      <button onClick={() => handleDelete(itemId)} disabled={deletingId === itemId} className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                        Padam
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  return (
+    <Router>
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+        <Navbar isAdmin={isAdmin} setIsAdmin={setIsAdmin} />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/topic/:id" element={<DetailPage />} />
+          <Route path="/admin" element={<AdminPage isAdmin={isAdmin} />} />
+          <Route path="/login" element={<LoginPage setIsAdmin={setIsAdmin} />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
